@@ -99,10 +99,17 @@ fi
 
 mkdir -p "$DEST_DIR"
 
-# Copy repository contents into DEST_DIR (including dotfiles), exclude .git metadata from copy
+# Copy repository contents into DEST_DIR (including dotfiles) and overwrite existing files
 rm -rf "$SRC_DIR/.git" "$SRC_DIR/.github" 2>/dev/null || true
-echo "Copying files into $DEST_DIR ..."
-cp -a "$SRC_DIR"/. "$DEST_DIR"/
+echo "Copying files into $DEST_DIR (overwriting existing files)..."
+if have rsync; then
+	rsnyc_opts=( -a )
+	# Exclude any stray VCS directories just in case
+	rsync "${rsnyc_opts[@]}" --exclude='.git' --exclude='.github' "$SRC_DIR"/ "$DEST_DIR"/
+else
+	# Force overwrite and remove destination before writing to handle type changes
+	\cp -a --force --remove-destination "$SRC_DIR"/. "$DEST_DIR"/
+fi
 
 cd "$DEST_DIR"
 
