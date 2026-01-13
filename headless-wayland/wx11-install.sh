@@ -1,3 +1,9 @@
+sudo apt-get update
+sudo apt-get install -y xserver-xorg-legacy
+echo 'allowed_users=anybody' | sudo tee /etc/Xorg.wrap >/dev/null
+ls -l /usr/lib/xorg/Xorg.wrap
+# Expect: -rwsr-sr-x root root ... Xorg.wrap  (setuid bit 's' present)
+
 cat > ~/.local/bin/run-electron-wayland <<'EOF'
 #!/bin/sh
 set -e
@@ -10,17 +16,25 @@ if [ ! -x "$ELECTRON" ]; then
   npm ci || npm i
 fi
 
-LAUNCH_CMD='"$ELECTRON" "$APP_DIR" --kiosk --start-fullscreen --ozone-platform=wayland --no-sandbox'
-
-# Prefer software rendering in VMs; then try hardware
-if env WLR_RENDERER=pixman dbus-run-session -- cage -- bash -lc "$LAUNCH_CMD"; then
+# Try software-rendered Wayland (best for VMs)
+if env WLR_RENDERER=pixman ELECTRON_OZONE_PLATFORM_HINT=wayland dbus-run-session -- \
+  cage -- \
+  "$ELECTRON" "$APP_DIR" \
+  --kiosk --start-fullscreen --ozone-platform=wayland --no-sandbox
+then
   exit 0
 fi
 
 echo "Wayland (software) failed; trying hardware..." >&2
-exec dbus-run-session -- cage -- bash -lc "$LAUNCH_CMD"
+
+# Try hardware-rendered Wayland
+exec ELECTRON_OZONE_PLATFORM_HINT=wayland dbus-run-session -- \
+  cage -- \
+  "$ELECTRON" "$APP_DIR" \
+  --kiosk --start-fullscreen --ozone-platform=wayland --no-sandbox
 EOF
 chmod +x ~/.local/bin/run-electron-wayland
+
 cat > ~/.local/bin/run-electron-x11 <<'EOF'
 #!/bin/sh
 set -e
@@ -36,29 +50,15 @@ fi
 CLIENT='
 xset -dpms s off s noblank
 openbox &
-exec bash -lc "\"'"$ELECTRON"'" \"'"$APP_DIR"'\" --kiosk --start-fullscreen --no-sandbox"
+exec "'"$ELECTRON"'" "'"$APP_DIR"'" --kiosk --start-fullscreen --no-sandbox
 '
 
-exec dbus-run-session -- xinit /bin/sh -c "$CLIENT" -- :1 -nolisten tcp
+# Use the setuid wrapper and the active VT (XDG_VTNR is set on real TTY logins)
+SERVER=/usr/lib/xorg/Xorg.wrap
+VT_OPT=
+[ -n "$XDG_VTNR" ] && VT_OPT="vt$XDG_VTNR"
+
+exec dbus-run-session -- xinit /bin/sh -c "$CLIENT" -- "$SERVER" :1 -nolisten tcp $VT_OPT
 EOF
 chmod +x ~/.local/bin/run-electron-x11
-cat > ~/.local/bin/run-electron-kiosk <<'EOF'
-#!/bin/sh
-set -e
-if ~/.local/bin/run-electron-wayland; then
-  exit 0
-fi
-echo "Falling back to X11..." >&2
-exec ~/.local/bin/run-electron-x11
-EOF
-chmod +x ~/.local/bin/run-electron-kiosk
 
-export XVFB_MAYBE_DISABLE=1
-
-sudo apt-get update
-sudo apt-get install -y xserver-xorg-legacy
-echo 'allowed_users=anybody' | sudo tee /etc/Xorg.wrap >/dev/null
-
-sudo chown root:root "$HOME/dev/electrontest/node_modules/electron/dist/chrome-sandbox"
-sudo chmod 4755 "$HOME/dev/electrontest/node_modules/electron/dist/chrome-sandbox"
-echo "Setup complete. You can run 'run-electron-kiosk' to start the app in kiosk mode."
