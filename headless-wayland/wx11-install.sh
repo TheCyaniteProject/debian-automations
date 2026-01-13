@@ -61,3 +61,4 @@ echo 'allowed_users=anybody' | sudo tee /etc/Xorg.wrap >/dev/null
 
 sudo chown root:root "$HOME/dev/electrontest/node_modules/electron/dist/chrome-sandbox"
 sudo chmod 4755 "$HOME/dev/electrontest/node_modules/electron/dist/chrome-sandbox"
+echo "Setup complete. You can run 'run-electron-kiosk' to start the app in kiosk mode."
