@@ -213,3 +213,6 @@ echo
   echo "- If Wayland still fails, use the X11 runner which is generally robust in VirtualBox."
   echo
 }
+
+sed -i 's/--ozone-platform=wayland/--ozone-platform=wayland --no-sandbox/' ~/.local/bin/run-electron-wayland
+sed -i 's/--start-fullscreen"/--start-fullscreen --no-sandbox"/' ~/.local/bin/run-electron-x11
