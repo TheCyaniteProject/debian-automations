@@ -117,7 +117,7 @@ if [ "$VBOX" = 1 ]; then
 #!/bin/sh
 set -e
 APP_DIR="${APP_DIR:-$PWD}"
-CMD='cd "$APP_DIR" && ELECTRON_OZONE_PLATFORM_HINT=wayland npm start -- --kiosk --start-fullscreen --ozone-platform=wayland'
+CMD='cd "$APP_DIR" && ELECTRON_OZONE_PLATFORM_HINT=wayland npm start -- --kiosk --start-fullscreen --ozone-platform=wayland --no-sandbox/'
 
 # Try software rendering (pixman) first for better reliability in VirtualBox
 if WLR_RENDERER=pixman dbus-run-session -- cage -- bash -lc "$CMD"; then
@@ -133,7 +133,7 @@ else
 #!/bin/sh
 set -e
 APP_DIR="${APP_DIR:-$PWD}"
-CMD='cd "$APP_DIR" && ELECTRON_OZONE_PLATFORM_HINT=wayland npm start -- --kiosk --start-fullscreen --ozone-platform=wayland'
+CMD='cd "$APP_DIR" && ELECTRON_OZONE_PLATFORM_HINT=wayland npm start -- --kiosk --start-fullscreen --ozone-platform=wayland --no-sandbox/'
 
 # Try hardware rendering first
 if dbus-run-session -- cage -- bash -lc "$CMD"; then
